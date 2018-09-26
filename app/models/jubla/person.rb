@@ -13,11 +13,21 @@ module Jubla::Person
     belongs_to :originating_state, class_name: 'Group'
   end
 
+  module ClassMethods
+    def alumnus_only
+      joins(:roles)
+        .merge(Role.alumnus)
+        .where.not(id: joins(:roles).merge(Role.without_alumnus))
+        .distinct
+    end
+  end
+
+  def alumnus_only?
+    self.class.alumnus_only.where(id: id).exists?
+  end
+
   def canton
     self[:canton].presence || super
   end
 
-  def only_alumnus_group_member?
-    roles.all?(&:alumnus_group_member?)
-  end
 end

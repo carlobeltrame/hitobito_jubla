@@ -8,32 +8,41 @@
 require 'spec_helper'
 
 describe Jubla::Person::Filter::List do
+  let(:person) { Fabricate(:person) }
 
-  let(:person)        { people(:top_leader) }
-  let(:alumnus_group) { groups(:bern_ehemalige) }
+  [[Group::FlockAlumnusGroup::Member, :bern_ehemalige],
+   [Group::Flock::Alumnus, :bern]].each do |role_type, role_group|
+    context "#{role_type}" do
 
-  %w(ch be city bern).zip(%w(federation state region flock)).each do |group, level|
-    let(:alumnus) { Fabricate(Group::FlockAlumnusGroup::Member.name, group: alumnus_group) }
+      %w(ch be city bern).zip(%w(federation state region flock)).each do |group, layer|
+        let(:alumnus) { Fabricate(role_type.name, group: groups(role_group), person: person) }
 
-    it 'does not find alumnus role when flag ist not set' do
-      alumnus.person.update("contactable_by_#{level}" => false)
-      filter = list_filter(group, Group::FlockAlumnusGroup::Member)
-      expect(filter.entries).to be_empty
+        context "contactable_by_#{layer}" do
+
+          it "true includes alumnus role" do
+            alumnus.person.update("contactable_by_#{layer}" => true)
+            filter = list_filter(group, role_type)
+            expect(filter.entries).to include(alumnus.person)
+          end
+
+          it "false does not include alumnus role" do
+            alumnus.person.update("contactable_by_#{layer}" => false)
+            filter = list_filter(group, role_type)
+            expect(filter.entries).to be_empty
+          end
+
+          next unless role_type == Group::Flock::Alumnus
+
+          it "false includes alumnus role, if it has another active role" do
+            Fabricate(Group::Flock::Leader.name, group: groups(:bern), person: person)
+            alumnus.person.update("contactable_by_#{layer}" => false)
+            filter = list_filter(group, role_type, Group::Flock::Leader)
+            expect(alumnus.reload).to be_present # role still exists
+            expect(filter.entries).to include(alumnus.person)
+          end
+        end
+      end
     end
-
-    it 'finds alumnus role only if corresponding flag is set' do
-      alumnus.person.update("contactable_by_#{level}" => true)
-      filter = list_filter(group, Group::FlockAlumnusGroup::Member)
-      expect(filter.entries).to include(alumnus.person)
-    end
-
-    it 'ignores flag when other role matches' do
-      alumnus.person.update("contactable_by_#{level}" => false)
-      Fabricate(Group::Flock::Leader.name, group: groups(:bern), person: alumnus.person)
-      filter = list_filter(group, Group::FlockAlumnusGroup::Member, Group::Flock::Leader)
-      expect(filter.entries).to include(alumnus.person)
-    end
-
   end
 
   def list_filter(group, *roles)
@@ -41,11 +50,12 @@ describe Jubla::Person::Filter::List do
   end
 
   def build_params(roles)
-    { range: 'deep',
+    {
+      range: 'deep',
       filters: {
         role: { role_type_ids: roles.collect(&:id).join('-') }
-      }
     }
-  end
+  }
+end
 
 end

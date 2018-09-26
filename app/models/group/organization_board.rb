@@ -48,7 +48,7 @@ class Group::OrganizationBoard < Group
   end
 
   class Treasurer < Jubla::Role::Treasurer
-    self.permissions = [:contact_data, :group_read]
+    self.permissions = [:contact_data, :group_read, :finance]
   end
 
   class Member < Jubla::Role::Member
@@ -58,12 +58,15 @@ class Group::OrganizationBoard < Group
   class GroupAdmin < Jubla::Role::GroupAdmin
   end
 
+  class Alumnus < Jubla::Role::Alumnus
+  end
+
   class External < Jubla::Role::External
   end
 
   class DispatchAddress < Jubla::Role::DispatchAddress
   end
 
-  roles Leader, Treasurer, Member, GroupAdmin, External, DispatchAddress
+  roles Leader, Treasurer, Member, GroupAdmin, Alumnus, External, DispatchAddress
 
 end
